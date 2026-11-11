@@ -38,8 +38,10 @@ Route::get('calendar/feed/{token}.ics', [CalendarFeedController::class, 'feed'])
     ->name('calendar.feed');
 
 Route::get('strava/callback', [StravaConnectionController::class, 'callback'])->name('strava.callback');
-Route::get('webhooks/strava', [StravaWebhookController::class, 'verify']);
-Route::post('webhooks/strava', [StravaWebhookController::class, 'receive']);
+Route::get('webhooks/strava', [StravaWebhookController::class, 'verify'])
+    ->middleware('throttle:60,1');
+Route::post('webhooks/strava', [StravaWebhookController::class, 'receive'])
+    ->middleware('throttle:60,1');
 
 Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('me', [AuthController::class, 'me']);

@@ -1,0 +1,267 @@
+openapi: 3.1.0
+info:
+  title: TriTrain API
+  version: 1.0.0
+  description: |
+    Adaptive triathlon coaching API. It generates periodized plans, scores
+    completed training, and adapts future workouts as athlete data arrives.
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local Laravel server
+tags:
+  - name: Authentication
+  - name: Athlete
+  - name: Training
+  - name: Races
+  - name: Integrations
+paths:
+  /auth/register:
+    post:
+      tags: [Authentication]
+      summary: Register an athlete
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User and bearer token
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: Authenticate an athlete
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: User and bearer token
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /auth/logout:
+    post:
+      tags: [Authentication]
+      security: [{ bearerAuth: [] }]
+      summary: Revoke the current token
+      responses:
+        '204': { description: Logged out }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /me:
+    get:
+      tags: [Authentication]
+      security: [{ bearerAuth: [] }]
+      summary: Get the authenticated athlete
+      responses:
+        '200': { description: User with athlete profile }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /athlete:
+    get:
+      tags: [Athlete]
+      security: [{ bearerAuth: [] }]
+      summary: Get athlete profile and coaching preferences
+      responses:
+        '200': { description: Athlete profile }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    put:
+      tags: [Athlete]
+      security: [{ bearerAuth: [] }]
+      summary: Create or update the athlete profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AthleteRequest' }
+      responses:
+        '200': { description: Updated athlete profile }
+        '201': { description: Created athlete profile }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /races:
+    get:
+      tags: [Races]
+      security: [{ bearerAuth: [] }]
+      summary: List the athlete's races
+      responses:
+        '200': { description: Race collection }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Races]
+      security: [{ bearerAuth: [] }]
+      summary: Create a race
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RaceRequest' }
+      responses:
+        '201': { description: Race created }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /calendar:
+    get:
+      tags: [Training]
+      security: [{ bearerAuth: [] }]
+      summary: Get planned workouts and activities by day
+      parameters:
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+      responses:
+        '200': { description: Calendar data }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /activities:
+    get:
+      tags: [Training]
+      security: [{ bearerAuth: [] }]
+      summary: List activities
+      responses:
+        '200': { description: Activity collection }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Training]
+      security: [{ bearerAuth: [] }]
+      summary: Record a manual activity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ActivityRequest' }
+      responses:
+        '201': { description: Activity created }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /calendar/feed/{token}.ics:
+    get:
+      tags: [Training]
+      summary: Download a private iCalendar feed
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string, minLength: 40, maxLength: 40 }
+      responses:
+        '200':
+          description: iCalendar feed
+          content:
+            text/calendar:
+              schema: { type: string }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /webhooks/strava:
+    get:
+      tags: [Integrations]
+      summary: Strava webhook verification handshake
+      parameters:
+        - { name: hub.mode, in: query, required: true, schema: { type: string, example: subscribe } }
+        - { name: hub.verify_token, in: query, required: true, schema: { type: string } }
+        - { name: hub.challenge, in: query, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Challenge response }
+        '403': { description: Invalid verification token }
+        '429': { $ref: '#/components/responses/RateLimited' }
+    post:
+      tags: [Integrations]
+      summary: Receive a Strava event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StravaEvent' }
+      responses:
+        '200': { description: Event accepted for processing }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Sanctum
+  responses:
+    Unauthorized: { description: Missing or invalid bearer token }
+    RateLimited: { description: Too many requests }
+    NotFound: { description: Resource not found }
+    ValidationError:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message: { type: string }
+              errors: { type: object, additionalProperties: true }
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [name, email, password, password_confirmation]
+      properties:
+        name: { type: string }
+        email: { type: string, format: email }
+        password: { type: string, format: password, minLength: 8 }
+        password_confirmation: { type: string, format: password }
+        device_name: { type: string }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, format: password }
+        device_name: { type: string }
+    AuthResponse:
+      type: object
+      required: [token, user]
+      properties:
+        token: { type: string }
+        user: { type: object }
+    AthleteRequest:
+      type: object
+      properties:
+        timezone: { type: string, example: Europe/Riga }
+        experience: { type: string, enum: [novice, intermediate, advanced] }
+        weekly_hours: { type: number, minimum: 2, maximum: 30 }
+        birth_year: { type: integer }
+        weight_kg: { type: number }
+        max_hr: { type: integer }
+        weakest_sport: { type: string, enum: [swim, bike, run] }
+        preferences: { type: object, additionalProperties: true }
+    RaceRequest:
+      type: object
+      required: [name, distance, date]
+      properties:
+        name: { type: string }
+        distance: { type: string }
+        date: { type: string, format: date }
+        priority: { type: string, enum: [A, B, C] }
+    ActivityRequest:
+      type: object
+      required: [sport, started_at, duration_s]
+      properties:
+        sport: { type: string, enum: [swim, bike, run, brick] }
+        started_at: { type: string, format: date-time }
+        duration_s: { type: integer, minimum: 1 }
+        distance_m: { type: integer, minimum: 0 }
+        avg_hr: { type: integer }
+        np_w: { type: integer }
+        avg_pace: { type: number }
+        tss: { type: number }
+    StravaEvent:
+      type: object
+      required: [object_type, object_id, aspect_type, owner_id]
+      properties:
+        object_type: { type: string, enum: [activity, athlete] }
+        object_id: { type: integer }
+        aspect_type: { type: string, enum: [create, update, delete] }
+        owner_id: { type: integer }
+        updates: { type: object, additionalProperties: true }

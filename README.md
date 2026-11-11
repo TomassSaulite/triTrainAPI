@@ -1,5 +1,7 @@
 # TriTrain API
 
+[![CI](https://github.com/TomassSaulite/triTrainAPI/actions/workflows/tests.yml/badge.svg)](https://github.com/TomassSaulite/triTrainAPI/actions/workflows/tests.yml)
+
 The backend of TriTrain, a triathlon training app that works like a customizable coach. It
 turns a race date, weekly hours and current fitness into a periodized swim/bike/run plan,
 then re-plans the remaining weeks as completed workouts sync in.

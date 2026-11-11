@@ -82,6 +82,10 @@ idempotent and installs or refreshes the system workout library the generator de
      -F verify_token=$STRAVA_WEBHOOK_VERIFY_TOKEN
    ```
 
+## OpenAPI reference
+
+The machine-readable API contract is in [`docs/openapi.yaml`](docs/openapi.yaml). The longer human-readable reference remains in [`docs/api.md`](docs/api.md).
+
 ## Using the API
 
 All endpoints live under `/api/v1` and take a Sanctum bearer token from `/auth/register` or
